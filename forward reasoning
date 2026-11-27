@@ -1,0 +1,36 @@
+def forward_chaining(facts, rules, query):
+    inferred = set(facts)
+
+    while True:
+        new_fact = False
+
+        for premises, conclusion in rules:
+            if all(p in inferred for p in premises):
+                if conclusion not in inferred:
+                    inferred.add(conclusion)
+                    print("Derived:", conclusion)
+                    new_fact = True
+
+        if query in inferred:
+            print("\nQuery proved:", query)
+            return True
+
+        if not new_fact:
+            print("\nQuery cannot be proved:", query)
+            return False
+
+
+# Knowledge Base
+facts = input("Enter facts separated by spaces: ").split()
+
+n = int(input("Enter number of rules: "))
+rules = []
+
+for i in range(n):
+    premises = input("Enter premises separated by spaces: ").split()
+    conclusion = input("Enter conclusion: ")
+    rules.append((premises, conclusion))
+
+query = input("Enter query: ")
+
+forward_chaining(facts, rules, query)
