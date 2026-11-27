@@ -1,0 +1,39 @@
+def alpha_beta(depth, node, alpha, beta, maximizing, tree):
+    if depth == 3:
+        return tree[node]
+
+    if maximizing:
+        best = float('-inf')
+
+        for child in range(2):
+            val = alpha_beta(depth + 1, node * 2 + child,
+                             alpha, beta, False, tree)
+            best = max(best, val)
+            alpha = max(alpha, best)
+
+            if beta <= alpha:
+                break
+
+        return best
+
+    else:
+        best = float('inf')
+
+        for child in range(2):
+            val = alpha_beta(depth + 1, node * 2 + child,
+                             alpha, beta, True, tree)
+            best = min(best, val)
+            beta = min(beta, best)
+
+            if beta <= alpha:
+                break
+
+        return best
+
+
+
+tree = list(map(int, input("Enter 8 leaf values: ").split()))
+
+result = alpha_beta(0, 0, float('-inf'), float('inf'), True, tree)
+
+print("Optimal value:", result)
