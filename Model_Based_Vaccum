@@ -1,0 +1,44 @@
+class VacuumAgent:
+    def __init__(self):
+        self.model = {"A": None, "B": None}
+
+    def update_model(self, location, status):
+        self.model[location] = status
+
+    def action(self, location, status):
+        self.update_model(location, status)
+
+        if status == "dirty":
+            print("Room", location, "is Dirty -> Suck")
+            return "Suck"
+
+        if location == "A":
+            return "Move to B"
+        else:
+            return "Move to A"
+
+
+
+agent = VacuumAgent()
+
+room_A = input("Enter status of Room A (Clean/Dirty): ").lower()
+room_B = input("Enter status of Room B (Clean/Dirty): ").lower()
+location = input("Enter vacuum location (A/B): ").upper()
+
+rooms = {"A": room_A, "B": room_B}
+
+print("\nAgent Actions:")
+
+
+for loc in [location, "B" if location == "A" else "A"]:
+    status = rooms[loc]
+    result = agent.action(loc, status)
+
+    if result == "Suck":
+        rooms[loc] = "clean"
+    else:
+        print(result)
+
+print("\nInternal Model:", agent.model)
+print("Final Room A:", rooms["A"].capitalize())
+print("Final Room B:", rooms["B"].capitalize())
