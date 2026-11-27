@@ -1,0 +1,54 @@
+def astar(graph, heuristic, start, goal):
+    open_list = [(heuristic[start], 0, start)]
+    parent = {}
+    g_cost = {start: 0}
+
+    while open_list:
+        open_list.sort()
+        f, g, node = open_list.pop(0)
+
+        if node == goal:
+            path = []
+            while node in parent:
+                path.append(node)
+                node = parent[node]
+            path.append(start)
+            path.reverse()
+
+            print("Path:", path)
+            print("Cost:", g_cost[goal])
+            return
+
+        for neighbor, cost in graph.get(node, []):
+            new_g = g + cost
+
+            if neighbor not in g_cost or new_g < g_cost[neighbor]:
+                g_cost[neighbor] = new_g
+                parent[neighbor] = node
+                new_f = new_g + heuristic[neighbor]
+                open_list.append((new_f, new_g, neighbor))
+
+    print("Path not found")
+
+
+
+graph = {}
+n = int(input("Enter number of nodes: "))
+
+for i in range(n):
+    node = input("Enter node name: ")
+    edges = input("Enter neighbors and cost (e.g. B 4 C 3): ").split()
+
+    graph[node] = []
+    for j in range(0, len(edges), 2):
+        graph[node].append((edges[j], int(edges[j + 1])))
+
+
+heuristic = {}
+for node in graph:
+    heuristic[node] = int(input(f"Enter heuristic for {node}: "))
+
+start = input("Enter start node: ")
+goal = input("Enter goal node: ")
+
+astar(graph, heuristic, start, goal)
