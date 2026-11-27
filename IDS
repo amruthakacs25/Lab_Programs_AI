@@ -1,0 +1,43 @@
+def depth_limited_search(graph, node, goal, depth):
+    if node == goal:
+        return True
+
+    if depth == 0:
+        return False
+
+    for neighbor in graph.get(node, []):
+        if depth_limited_search(graph, neighbor, goal, depth - 1):
+            return True
+
+    return False
+
+
+def iterative_deepening_search(graph, start, goal):
+    depth = 0
+
+    while True:
+        print("Searching at depth:", depth)
+
+        if depth_limited_search(graph, start, goal, depth):
+            print("Goal found at depth", depth)
+            return True
+
+        depth += 1
+
+
+# Input graph
+graph = {}
+n = int(input("Enter number of nodes: "))
+
+for i in range(n):
+    node = input("Enter node: ")
+    neighbors = input("Enter neighbors separated by spaces: ").split()
+    graph[node] = neighbors
+
+start = input("Enter start node: ")
+goal = input("Enter goal node: ")
+
+if iterative_deepening_search(graph, start, goal):
+    print("Goal reached!")
+else:
+    print("Goal not found!")
