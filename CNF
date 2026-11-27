@@ -1,0 +1,242 @@
+import re
+
+# Tokenize the logical expression
+def tokenize(expr):
+    expr = expr.replace("forall", "∀").replace("exists", "∃")
+    expr = expr.replace("->", "→").replace("~", "¬")
+    expr = expr.replace("&", "∧").replace("|", "∨")
+
+    pattern = r'∀|∃|→|∧|∨|¬|\(|\)|[A-Za-z_]\w*(?:\([^()]*\))?'
+    return re.findall(pattern, expr)
+
+
+# Parser
+def parse(tokens):
+    pos = 0
+
+    def implication():
+        nonlocal pos
+        left = disjunction()
+        if pos < len(tokens) and tokens[pos] == "→":
+            pos += 1
+            right = implication()
+            return ("imp", left, right)
+        return left
+
+    def disjunction():
+        nonlocal pos
+        node = conjunction()
+        while pos < len(tokens) and tokens[pos] == "∨":
+            pos += 1
+            node = ("or", node, conjunction())
+        return node
+
+    def conjunction():
+        nonlocal pos
+        node = unary()
+        while pos < len(tokens) and tokens[pos] == "∧":
+            pos += 1
+            node = ("and", node, unary())
+        return node
+
+    def unary():
+        nonlocal pos
+
+        if pos >= len(tokens):
+            raise ValueError("Incomplete expression")
+
+        token = tokens[pos]
+
+        if token == "¬":
+            pos += 1
+            return ("not", unary())
+
+        if token in ("∀", "∃"):
+            quantifier = token
+            pos += 1
+            variable = tokens[pos]
+            pos += 1
+            return ("quant", quantifier, variable, unary())
+
+        if token == "(":
+            pos += 1
+            node = implication()
+            if pos >= len(tokens) or tokens[pos] != ")":
+                raise ValueError("Missing closing parenthesis")
+            pos += 1
+            return node
+
+        pos += 1
+        return ("atom", token)
+
+    result = implication()
+
+    if pos != len(tokens):
+        raise ValueError("Invalid expression")
+
+    return result
+
+
+# Eliminate implication
+def eliminate_implication(node):
+    if node[0] == "imp":
+        return ("or",
+                ("not", eliminate_implication(node[1])),
+                eliminate_implication(node[2]))
+
+    if node[0] in ("and", "or"):
+        return (node[0],
+                eliminate_implication(node[1]),
+                eliminate_implication(node[2]))
+
+    if node[0] == "not":
+        return ("not", eliminate_implication(node[1]))
+
+    if node[0] == "quant":
+        return ("quant", node[1], node[2],
+                eliminate_implication(node[3]))
+
+    return node
+
+
+# Convert to Negation Normal Form (NNF)
+def nnf(node):
+    if node[0] == "not":
+        child = node[1]
+
+        if child[0] == "not":
+            return nnf(child[1])
+
+        if child[0] == "and":
+            return ("or", nnf(("not", child[1])),
+                         nnf(("not", child[2])))
+
+        if child[0] == "or":
+            return ("and", nnf(("not", child[1])),
+                          nnf(("not", child[2])))
+
+        if child[0] == "quant":
+            q = "∃" if child[1] == "∀" else "∀"
+            return ("quant", q, child[2],
+                   nnf(("not", child[3])))
+
+        return node
+
+    if node[0] == "and":
+        return ("and", nnf(node[1]), nnf(node[2]))
+
+    if node[0] == "or":
+        return ("or", nnf(node[1]), nnf(node[2]))
+
+    if node[0] == "quant":
+        return ("quant", node[1], node[2], nnf(node[3]))
+
+    return node
+
+
+# Skolemization and removal of quantifiers
+def skolemize(node, universals=None, counter=None):
+    if universals is None:
+        universals = []
+
+    if counter is None:
+        counter = [0]
+
+    if node[0] == "quant":
+        q, var, body = node[1], node[2], node[3]
+
+        if q == "∀":
+            return skolemize(body, universals + [var], counter)
+
+        counter[0] += 1
+        skolem = "c" + str(counter[0]) if not universals else \
+                 "f" + str(counter[0]) + "(" + ",".join(universals) + ")"
+
+        body = substitute(body, var, skolem)
+        return skolemize(body, universals, counter)
+
+    if node[0] in ("and", "or"):
+        return (node[0],
+                skolemize(node[1], universals, counter),
+                skolemize(node[2], universals, counter))
+
+    if node[0] == "not":
+        return ("not", skolemize(node[1], universals, counter))
+
+    return node
+
+
+# Replace variable with Skolem term
+def substitute(node, var, term):
+    if node[0] == "atom":
+        atom = node[1]
+        return ("atom", re.sub(r'\b' + re.escape(var) + r'\b',
+                              term, atom))
+
+    if node[0] == "not":
+        return ("not", substitute(node[1], var, term))
+
+    if node[0] in ("and", "or"):
+        return (node[0],
+                substitute(node[1], var, term),
+                substitute(node[2], var, term))
+
+    return node
+
+
+# Distribute OR over AND
+def distribute(node):
+    if node[0] == "and":
+        return ("and", distribute(node[1]), distribute(node[2]))
+
+    if node[0] == "or":
+        left = distribute(node[1])
+        right = distribute(node[2])
+
+        if left[0] == "and":
+            return distribute(("and",
+                              ("or", left[1], right),
+                              ("or", left[2], right)))
+
+        if right[0] == "and":
+            return distribute(("and",
+                              ("or", left, right[1]),
+                              ("or", left, right[2])))
+
+        return ("or", left, right)
+
+    return node
+
+
+# Display expression
+def display(node):
+    if node[0] == "atom":
+        return node[1]
+
+    if node[0] == "not":
+        return "¬" + display(node[1])
+
+    if node[0] == "and":
+        return "(" + display(node[1]) + " ∧ " + display(node[2]) + ")"
+
+    if node[0] == "or":
+        return "(" + display(node[1]) + " ∨ " + display(node[2]) + ")"
+
+    return str(node)
+
+
+# Main program
+expr = input("Enter FOL expression: ")
+
+tokens = tokenize(expr)
+parsed = parse(tokens)
+
+step1 = eliminate_implication(parsed)
+step2 = nnf(step1)
+step3 = skolemize(step2)
+step4 = distribute(step3)
+
+print("\nAfter eliminating implication:", display(step1))
+print("After NNF:", display(step2))
+print("After Skolemization:", display(step3))
+print("Final CNF:", display(step4))
