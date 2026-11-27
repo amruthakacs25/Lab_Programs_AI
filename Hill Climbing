@@ -1,0 +1,35 @@
+def hill_climbing():
+    n = int(input("Enter number of states: "))
+    states = []
+
+    for i in range(n):
+        value = int(input(f"Enter value of state {i+1}: "))
+        states.append(value)
+
+    current = int(input("Enter starting index (0-based): "))
+
+    while True:
+        neighbors = []
+
+        if current > 0:
+            neighbors.append(current - 1)
+
+        if current < n - 1:
+            neighbors.append(current + 1)
+
+        best = current
+
+        for i in neighbors:
+            if states[i] > states[best]:
+                best = i
+
+        if best == current:
+            break
+
+        current = best
+
+    print("Best state value:", states[current])
+    print("Best state index:", current)
+
+
+hill_climbing()
